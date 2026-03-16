@@ -8,6 +8,8 @@ const app = express();
 const port = Number(process.env.PORT) || 3000;
 const host = '0.0.0.0';
 const rootDir = __dirname;
+const isRailway = Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_STATIC_URL);
+const useSecureCookie = process.env.NODE_ENV === 'production' || isRailway;
 
 function getEnv(primaryKey, secondaryKey) {
   return process.env[primaryKey] || process.env[secondaryKey];
@@ -43,6 +45,8 @@ const dbPool = mysql.createPool({
   queueLimit: 0,
 });
 
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(
@@ -52,11 +56,23 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: useSecureCookie,
       sameSite: 'lax',
     },
   }),
 );
+
+function saveSession(req) {
+  return new Promise((resolve, reject) => {
+    req.session.save((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -107,6 +123,8 @@ app.post('/api/register', async (req, res) => {
       role: 'manager',
     };
 
+    await saveSession(req);
+
     return res.status(201).json({
       message: 'ユーザー登録が完了しました。',
       user: req.session.user,
@@ -148,6 +166,8 @@ app.post('/api/login', async (req, res) => {
       email: user.email,
       role: user.role,
     };
+
+    await saveSession(req);
 
     return res.status(200).json({
       message: 'ログインに成功しました。',
