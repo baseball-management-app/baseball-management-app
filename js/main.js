@@ -13,13 +13,77 @@
   }
 
   function bindLogin() {
-    const form = qs('loginForm');
-    if (!form) return;
-    form.addEventListener('submit', (e) => {
+    const loginForm = qs('loginForm');
+    if (!loginForm) return;
+
+    const registerForm = qs('registerForm');
+    const authMessage = qs('authMessage');
+    const tabs = document.querySelectorAll('[data-auth-tab]');
+    const panels = document.querySelectorAll('[data-auth-panel]');
+
+    function switchAuthTab(name) {
+      tabs.forEach((tab) => {
+        const active = tab.dataset.authTab === name;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      panels.forEach((panel) => {
+        panel.hidden = panel.dataset.authPanel !== name;
+      });
+      if (authMessage) authMessage.textContent = '';
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => switchAuthTab(tab.dataset.authTab));
+    });
+
+    loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
+      const fd = new FormData(loginForm);
+      const email = String(fd.get('email') || '').trim().toLowerCase();
+      const password = String(fd.get('password') || '');
+      const users = JSON.parse(localStorage.getItem('mvpUsers') || '[]');
+      if (users.length) {
+        const matchedUser = users.find((u) => u.email === email && u.password === password);
+        if (!matchedUser) {
+          if (authMessage) authMessage.textContent = 'メールアドレスまたはパスワードが正しくありません。';
+          return;
+        }
+      }
+
       localStorage.setItem('mvpLoggedIn', '1');
+      if (authMessage) authMessage.textContent = 'ログインに成功しました。';
       window.location.href = 'index.html';
     });
+
+    if (registerForm) {
+      registerForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const fd = new FormData(registerForm);
+        const name = String(fd.get('name') || '').trim();
+        const email = String(fd.get('email') || '').trim().toLowerCase();
+        const password = String(fd.get('password') || '');
+        const passwordConfirm = String(fd.get('passwordConfirm') || '');
+
+        if (password !== passwordConfirm) {
+          if (authMessage) authMessage.textContent = '確認用パスワードが一致しません。';
+          return;
+        }
+
+        const users = JSON.parse(localStorage.getItem('mvpUsers') || '[]');
+        const exists = users.some((u) => u.email === email);
+        if (exists) {
+          if (authMessage) authMessage.textContent = 'このメールアドレスは既に登録済みです。';
+          return;
+        }
+
+        users.push({ name, email, password, createdAt: new Date().toISOString() });
+        localStorage.setItem('mvpUsers', JSON.stringify(users));
+        registerForm.reset();
+        if (authMessage) authMessage.textContent = '新規登録が完了しました。ログインしてください。';
+        switchAuthTab('login');
+      });
+    }
   }
 
   function renderHome() {
