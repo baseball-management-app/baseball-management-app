@@ -172,6 +172,34 @@ textarea { min-height: 82px; resize: vertical; }
   padding: 18px;
 }
 
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 14px 0 12px;
+}
+
+.auth-tab {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--subtext);
+}
+
+.auth-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.auth-message {
+  min-height: 1.2em;
+  margin: 10px 0 0;
+  color: var(--primary);
+  font-size: 0.85rem;
+}
+
+
 .small { font-size: 0.8rem; color: var(--subtext); }
 
 @media (min-width: 700px) {

@@ -10,12 +10,28 @@
   <div class="login-wrap">
     <div class="card">
       <h1>野球管理アプリ</h1>
-      <p class="small">メールアドレスとパスワードでログインしてください</p>
-      <form id="loginForm">
-        <div class="form-row"><label>メールアドレス</label><input type="email" required placeholder="coach@example.com" /></div>
-        <div class="form-row"><label>パスワード</label><input type="password" required placeholder="••••••••" /></div>
+      <p class="small">メールアドレスとパスワードでログイン、または新規登録してください</p>
+
+      <div class="auth-tabs" role="tablist" aria-label="認証タブ">
+        <button type="button" class="auth-tab active" data-auth-tab="login" aria-selected="true">ログイン</button>
+        <button type="button" class="auth-tab" data-auth-tab="register" aria-selected="false">新規登録</button>
+      </div>
+
+      <form id="loginForm" data-auth-panel="login">
+        <div class="form-row"><label for="loginEmail">メールアドレス</label><input id="loginEmail" name="email" type="email" required placeholder="coach@example.com" /></div>
+        <div class="form-row"><label for="loginPassword">パスワード</label><input id="loginPassword" name="password" type="password" required placeholder="••••••••" /></div>
         <button class="button-primary" type="submit">ログイン</button>
       </form>
+
+      <form id="registerForm" data-auth-panel="register" hidden>
+        <div class="form-row"><label for="registerName">表示名</label><input id="registerName" name="name" type="text" required placeholder="山田 太郎" /></div>
+        <div class="form-row"><label for="registerEmail">メールアドレス</label><input id="registerEmail" name="email" type="email" required placeholder="coach@example.com" /></div>
+        <div class="form-row"><label for="registerPassword">パスワード</label><input id="registerPassword" name="password" type="password" minlength="8" required placeholder="8文字以上" /></div>
+        <div class="form-row"><label for="registerPasswordConfirm">パスワード（確認）</label><input id="registerPasswordConfirm" name="passwordConfirm" type="password" minlength="8" required placeholder="確認用パスワード" /></div>
+        <button class="button-primary" type="submit">新規登録</button>
+      </form>
+
+      <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
     </div>
   </div>
   <script src="js/main.js"></script>
