@@ -79,6 +79,12 @@ main { padding: 14px 12px 20px; }
 .button-secondary { background: #e8eff8; color: var(--primary); }
 .button-ghost { background: #fff; border: 1px solid var(--border); color: var(--text); }
 
+.button-danger { background: var(--danger); color: #fff; width: 100%; }
+.danger-zone { border-color: #f0c4c4; background: #fff8f8; }
+.danger-zone .small { margin-bottom: 8px; }
+.error-text { color: var(--danger); }
+.success-text { color: var(--ok); }
+
 .actions { display: grid; gap: 8px; grid-template-columns: repeat(2, 1fr); margin-top: 8px; }
 
 label { display: block; font-size: 0.86rem; margin-bottom: 6px; color: var(--subtext); font-weight: 600; }
