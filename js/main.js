@@ -17,6 +17,7 @@
     coach: 'coach.html',
     manager: 'manager.html',
     player: 'player.html',
+    admin: 'manager.html',
   };
 
   function getRoleHome(role) {
@@ -402,9 +403,70 @@
     if (!qs('settingsRoot')) return;
 
     const user = await fetchCurrentUser();
+    if (!user) {
+      window.location.href = 'login.html';
+      return;
+    }
+
     qs('profileName').textContent = user && user.name ? user.name : '未ログイン';
     qs('profileRole').textContent = user && user.role ? user.role : '-';
     qs('profileTeam').textContent = '-';
+
+    const deleteMessage = qs('accountDeleteMessage');
+    const deleteConfirmTextInput = qs('deleteConfirmText');
+    const deletePasswordInput = qs('deleteAccountPassword');
+    const deleteAccountBtn = qs('deleteAccountBtn');
+
+    if (deleteAccountBtn) {
+      deleteAccountBtn.addEventListener('click', async () => {
+        if (!deleteConfirmTextInput || !deletePasswordInput || !deleteMessage) return;
+
+        deleteMessage.className = 'small';
+        deleteMessage.textContent = '';
+
+        const confirmationText = String(deleteConfirmTextInput.value || '').trim();
+        const password = String(deletePasswordInput.value || '');
+
+        if (!confirmationText || !password) {
+          deleteMessage.classList.add('error-text');
+          deleteMessage.textContent = '確認テキストとパスワードを入力してください。';
+          return;
+        }
+
+        const ok = window.confirm('アカウントを削除すると復元できません。本当に削除しますか？');
+        if (!ok) return;
+
+        deleteAccountBtn.disabled = true;
+        try {
+          const res = await fetch('/api/account', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ confirmationText, password }),
+          });
+
+          const result = await res.json();
+
+          if (!res.ok) {
+            deleteMessage.classList.add('error-text');
+            deleteMessage.textContent = result.message || 'アカウント削除に失敗しました。';
+            return;
+          }
+
+          deleteMessage.classList.add('success-text');
+          deleteMessage.textContent = result.message || 'アカウントを削除しました。ログイン画面へ移動します。';
+          setTimeout(() => {
+            window.location.href = 'login.html';
+          }, 800);
+        } catch (error) {
+          console.error(error);
+          deleteMessage.classList.add('error-text');
+          deleteMessage.textContent = 'サーバー通信に失敗しました。';
+        } finally {
+          deleteAccountBtn.disabled = false;
+        }
+      });
+    }
 
     qs('logoutBtn').addEventListener('click', async () => {
       try {

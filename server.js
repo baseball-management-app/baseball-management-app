@@ -74,11 +74,24 @@ function saveSession(req) {
   });
 }
 
+function destroySession(req, res) {
+  return new Promise((resolve, reject) => {
+    req.session.destroy((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      res.clearCookie('connect.sid');
+      resolve();
+    });
+  });
+}
+
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
-const ALLOWED_ROLES = new Set(['player', 'coach', 'manager']);
+const ALLOWED_ROLES = new Set(['player', 'coach', 'manager', 'admin']);
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -200,15 +213,93 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-  req.session.destroy((error) => {
-    if (error) {
+  destroySession(req, res)
+    .then(() => res.status(200).json({ message: 'ログアウトしました。' }))
+    .catch((error) => {
       console.error('[logout] error', error);
       return res.status(500).json({ message: 'ログアウトに失敗しました。' });
+    });
+});
+
+app.delete('/api/account', requireLogin, async (req, res) => {
+  const confirmationText = String(req.body.confirmationText || '').trim();
+  const password = String(req.body.password || '');
+  const sessionUserId = Number(req.session.user && req.session.user.id);
+
+  if (!sessionUserId) {
+    return res.status(401).json({ message: 'ログインが必要です。' });
+  }
+
+  if (confirmationText !== '削除する') {
+    return res.status(400).json({ message: '確認テキストに「削除する」と入力してください。' });
+  }
+
+  if (!password) {
+    return res.status(400).json({ message: '本人確認のためパスワードを入力してください。' });
+  }
+
+  let connection;
+  try {
+    connection = await dbPool.getConnection();
+    await connection.beginTransaction();
+
+    const [userRows] = await connection.query(
+      'SELECT id, password_hash FROM users WHERE id = ? LIMIT 1',
+      [sessionUserId],
+    );
+
+    if (userRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: '削除対象のユーザーが存在しません。' });
     }
 
-    res.clearCookie('connect.sid');
-    return res.status(200).json({ message: 'ログアウトしました。' });
-  });
+    const user = userRows[0];
+    const isMatched = await bcrypt.compare(password, user.password_hash);
+    if (!isMatched) {
+      await connection.rollback();
+      return res.status(401).json({ message: 'パスワードが正しくありません。' });
+    }
+
+    const [fkRows] = await connection.query(
+      `SELECT TABLE_NAME, COLUMN_NAME
+       FROM information_schema.KEY_COLUMN_USAGE
+       WHERE REFERENCED_TABLE_SCHEMA = ?
+         AND REFERENCED_TABLE_NAME = 'users'
+         AND REFERENCED_COLUMN_NAME = 'id'`,
+      [dbConfig.database],
+    );
+
+    for (const relation of fkRows) {
+      if (relation.TABLE_NAME === 'users') {
+        continue;
+      }
+
+      const tableName = String(relation.TABLE_NAME).replace(/`/g, '');
+      const columnName = String(relation.COLUMN_NAME).replace(/`/g, '');
+      await connection.query(`DELETE FROM \`${tableName}\` WHERE \`${columnName}\` = ?`, [sessionUserId]);
+    }
+
+    const [deleteResult] = await connection.query('DELETE FROM users WHERE id = ? LIMIT 1', [sessionUserId]);
+    if (deleteResult.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: '削除対象のユーザーが存在しません。' });
+    }
+
+    await connection.commit();
+    await destroySession(req, res);
+
+    return res.status(200).json({ message: 'アカウントを削除しました。' });
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error('[delete account] error', error);
+    return res.status(500).json({ message: 'アカウント削除に失敗しました。' });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
 });
 
 app.get('/api/me', requireLogin, (req, res) => {
