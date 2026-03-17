@@ -230,37 +230,6 @@
     }
   }
 
-  function renderPlayers() {
-    const root = qs('playersList');
-    if (!root) return;
-    const search = qs('playerSearch');
-
-    function draw() {
-      const keyword = ((search && search.value) || '').trim();
-      const list = data.players.filter((p) => p.name.includes(keyword) || String(p.number || '').includes(keyword) || String(p.pos || '').includes(keyword));
-
-      if (list.length === 0) {
-        root.innerHTML = emptyMessage('選手データがまだありません。');
-        return;
-      }
-
-      root.innerHTML = list.map((p) => `
-        <button class="list-item button-ghost player-item" data-id="${p.id}">
-          <div><strong>${p.name}</strong> <span class="tag">#${p.number}</span></div>
-          <div class="meta">${p.pos} / ${p.throwsBats}</div>
-        </button>`).join('');
-      root.querySelectorAll('.player-item').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          localStorage.setItem('selectedPlayerId', btn.dataset.id);
-          window.location.href = 'player-detail.html';
-        });
-      });
-    }
-
-    if (search) search.addEventListener('input', draw);
-    draw();
-  }
-
   function renderPlayerDetail() {
     if (!qs('playerDetailRoot')) return;
     if (data.players.length === 0) {
@@ -633,7 +602,6 @@
     bindLogin();
     await renderSettings();
     renderHome();
-    renderPlayers();
     renderPlayerDetail();
     renderGames();
     renderGameDetail();
