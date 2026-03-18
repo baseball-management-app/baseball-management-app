@@ -857,17 +857,37 @@
   function bindLogin() {
     const loginForm = qs('loginForm');
     const registerForm = qs('registerForm');
-    if (!loginForm || !registerForm) return;
+    const authTabs = Array.from(document.querySelectorAll('[data-auth-tab]'));
+    const authPanels = Array.from(document.querySelectorAll('[data-auth-panel]'));
+    if (!loginForm || !registerForm || authTabs.length === 0 || authPanels.length === 0) return;
     const message = qs('authMessage');
-    document.querySelectorAll('[data-auth-tab]').forEach((button) => {
+
+    function setAuthView(activeTab) {
+      authTabs.forEach((tabButton) => {
+        const isActive = tabButton.dataset.authTab === activeTab;
+        tabButton.classList.toggle('active', isActive);
+        tabButton.setAttribute('aria-selected', String(isActive));
+        tabButton.setAttribute('tabindex', isActive ? '0' : '-1');
+      });
+
+      authPanels.forEach((panel) => {
+        const isActive = panel.dataset.authPanel === activeTab;
+        panel.classList.toggle('active', isActive);
+        panel.classList.toggle('hidden', !isActive);
+        panel.hidden = !isActive;
+        panel.setAttribute('aria-hidden', String(!isActive));
+      });
+
+      message.textContent = '';
+    }
+
+    authTabs.forEach((button) => {
       button.addEventListener('click', () => {
-        const tab = button.dataset.authTab;
-        const loginActive = tab === 'login';
-        document.querySelectorAll('[data-auth-tab]').forEach((item) => item.classList.toggle('active', item === button));
-        loginForm.hidden = !loginActive;
-        registerForm.hidden = loginActive;
+        setAuthView(button.dataset.authTab || 'login');
       });
     });
+
+    setAuthView('login');
 
     loginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
