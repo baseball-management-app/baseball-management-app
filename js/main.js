@@ -352,7 +352,6 @@
       <section class="card role-hero">
         <div class="hero-kicker">${escapeHtml(getRoleLabel(user.role))}</div>
         <h2>${escapeHtml(user.name)} さんのホーム</h2>
-        <p class="small">ロールに必要な情報だけを表示しています。共通ホームは廃止しました。</p>
         <a class="button button-secondary" href="${actionLink}">${actionLabel}</a>
       </section>
     `;
