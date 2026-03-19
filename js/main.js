@@ -70,6 +70,8 @@
     ['offspeedCenter', '緩球:センター'],
     ['offspeedOpposite', '緩球:逆方向'],
   ];
+  const pitchTypeOptions = AppStats.PITCH_TYPE_OPTIONS;
+  const battedBallTypeOptions = AppStats.BATTED_BALL_TYPE_OPTIONS;
 
   const gameTypeLabels = {
     official: '公式戦',
@@ -102,6 +104,10 @@
 
   function fmtPct(value) {
     return `${(number(value) * 100).toFixed(1)}%`;
+  }
+
+  function fmtRateOrDash(value, denominator) {
+    return number(denominator) ? `${(number(value) * 100).toFixed(1)}%` : '—';
   }
 
   function fmtKg(value) {
@@ -160,11 +166,83 @@
   function createStatGrid(items) {
     if (!items.length) return '<div class="small">データがありません。</div>';
     return `<div class="grid">${items.map((item) => `
-      <div class="stat-card">
+      <div class="stat-card ${item.className || ''}" ${item.attributes || ''}>
         <div class="stat-label">${escapeHtml(item.label)}</div>
         <div class="stat-value">${escapeHtml(item.value)}</div>
+        ${item.meta ? `<div class="meta">${escapeHtml(item.meta)}</div>` : ''}
       </div>
     `).join('')}</div>`;
+  }
+
+  function buildPitchingBattedBallEditorFields(prefix, profileInput = {}) {
+    const profile = AppStats.normalizePitchingBattedBallProfile(profileInput);
+    return `
+      <details class="subtle-details">
+        <summary>球種別ゴロ・フライ内訳（任意）</summary>
+        <div class="field-grid compact-top batted-ball-grid">
+          ${pitchTypeOptions.map((pitchType) => `
+            <div class="stat-card">
+              <div class="stat-label">${escapeHtml(pitchType.label)}</div>
+              ${battedBallTypeOptions.slice(0, 2).map((battedBallType) => `
+                <div class="form-row compact-row compact-top">
+                  <label for="${prefix}-${pitchType.key}-${battedBallType.key}">${escapeHtml(battedBallType.label)}数</label>
+                  <input id="${prefix}-${pitchType.key}-${battedBallType.key}" name="battedBall.${pitchType.key}.${battedBallType.key}" type="number" step="1" min="0" value="${number(profile[pitchType.key] && profile[pitchType.key][battedBallType.key])}" />
+                </div>
+              `).join('')}
+            </div>
+          `).join('')}
+        </div>
+        <div class="small compact-top">将来的なライナーやポップフライ追加に備え、内部では球種×打球種別で保持します。</div>
+      </details>
+    `;
+  }
+
+  function collectPitchingBattedBallProfile(form) {
+    const profile = AppStats.emptyPitchingBattedBallProfile();
+    pitchTypeOptions.forEach((pitchType) => {
+      battedBallTypeOptions.forEach((battedBallType) => {
+        const input = form.querySelector(`[name="battedBall.${pitchType.key}.${battedBallType.key}"]`);
+        if (input) profile[pitchType.key][battedBallType.key] = number(input.value);
+      });
+    });
+    return profile;
+  }
+
+  function applyPitchingBattedBallProfileToForm(form, profileInput = {}) {
+    const profile = AppStats.normalizePitchingBattedBallProfile(profileInput);
+    pitchTypeOptions.forEach((pitchType) => {
+      battedBallTypeOptions.forEach((battedBallType) => {
+        const input = form.querySelector(`[name="battedBall.${pitchType.key}.${battedBallType.key}"]`);
+        if (input) input.value = number(profile[pitchType.key] && profile[pitchType.key][battedBallType.key]);
+      });
+    });
+  }
+
+  function buildGroundFlyDetailTable(summary) {
+    const breakdown = summary && summary.pitching && summary.pitching.derived && summary.pitching.derived.pitchingBattedBallBreakdown;
+    const rows = (breakdown && breakdown.rows) || [];
+    if (!rows.length) {
+      return '<div class="small">球種別の打球内訳はまだありません。</div>';
+    }
+    return `
+      <div class="table-wrap compact-top">
+        <table class="table compact-table">
+          <thead><tr><th>球種</th><th>ゴロ数</th><th>フライ数</th><th>総打球数</th><th>ゴロ率</th><th>フライ率</th></tr></thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.label)}</td>
+                <td>${row.groundCount}</td>
+                <td>${row.flyCount}</td>
+                <td>${row.totalCount}</td>
+                <td>${fmtRateOrDash(row.groundRate, row.totalCount)}</td>
+                <td>${fmtRateOrDash(row.flyRate, row.totalCount)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
   }
 
   function buildManualFields(fields, prefix) {
@@ -232,6 +310,7 @@
           </div>
           <div id="manualBattingFields" class="field-grid">${buildManualFields(battingFields, 'batting')}</div>
           <div id="manualPitchingFields" class="field-grid hidden">${buildManualFields(pitchingFields, 'pitching')}</div>
+          <div id="manualPitchingBattedBallFields" class="hidden">${buildPitchingBattedBallEditorFields('manual-batted-ball')}</div>
           <div class="actions single-action">
             <button class="button-primary" type="submit" ${disabled}>保存する</button>
           </div>
@@ -358,7 +437,7 @@
           </div>
           <div class="form-row">
             <label for="scorebookText">読み取り補助テキスト</label>
-            <textarea id="scorebookText" name="extractedText" placeholder="例: 山田: batting atBats=4 hits=2 walks=1 runsBattedIn=2\n佐藤: pitching outsRecorded=15 pitchCount=86 hitsAllowed=4 walks=2 strikeouts=6 earnedRuns=1 battersFaced=23"></textarea>
+            <textarea id="scorebookText" name="extractedText" placeholder="例: 山田: batting atBats=4 hits=2 walks=1 runsBattedIn=2\n佐藤: pitching outsRecorded=15 pitchCount=86 hitsAllowed=4 walks=2 strikeouts=6 earnedRuns=1 battersFaced=23 battedBall.straight.ground=2 battedBall.slider.fly=1"></textarea>
           </div>
           <button class="button-secondary" type="submit" ${state.games.length === 0 ? 'disabled' : ''}>入力候補を作成</button>
           <div id="scorebookMessage" class="small"></div>
@@ -391,6 +470,7 @@
 
   function buildPersonalSummaryCard(summary, user) {
     if (!summary) return '';
+    const breakdown = summary.pitching.derived.pitchingBattedBallBreakdown;
     return `
       <section class="card">
         <h2>個人成績サマリー</h2>
@@ -407,8 +487,18 @@
           { label: 'WHIP', value: fmt3(summary.pitching.derived.whip) },
           { label: '被打率', value: fmt3(summary.pitching.derived.hitAverage) },
           { label: '左右別被打率', value: `${fmt3(summary.pitching.derived.vsLeftHitAverage)} / ${fmt3(summary.pitching.derived.vsRightHitAverage)}` },
-          { label: 'ゴロ/フライ', value: fmt3(summary.pitching.derived.groundFlyRatio) },
+          {
+            label: 'ゴロ/フライ',
+            value: fmt3(summary.pitching.derived.groundFlyRatio),
+            meta: 'クリックで球種別内訳',
+            className: 'stat-card-button',
+            attributes: 'data-ground-fly-toggle="personal-summary" role="button" tabindex="0" aria-expanded="false"',
+          },
         ])}
+        <div id="groundFlyDetailPanel-personal-summary" class="ground-fly-detail hidden">
+          <div class="small">球種ごとのゴロ・フライ割合を簡易表示しています。既存データで球種不明のものは「不明」に集約しています。</div>
+          ${buildGroundFlyDetailTable({ pitching: { derived: { pitchingBattedBallBreakdown: breakdown } } })}
+        </div>
       </section>
     `;
   }
@@ -500,21 +590,29 @@
     const category = form.querySelector('[name="category"]')?.value;
     resetFields(form, battingFields);
     resetFields(form, pitchingFields);
+    applyPitchingBattedBallProfileToForm(form, {});
     if (!entry) return;
     const fields = category === 'pitching' ? pitchingFields : battingFields;
     fields.forEach(([key]) => {
       const input = form.querySelector(`[name="raw.${key}"]`);
       if (input) input.value = entry.raw[key] ?? 0;
     });
+    if (category === 'pitching') {
+      applyPitchingBattedBallProfileToForm(form, entry.raw.pitchingBattedBallProfile);
+    }
   }
 
   function collectRaw(form, category) {
     const fields = category === 'pitching' ? pitchingFields : battingFields;
-    return fields.reduce((acc, [key]) => {
+    const raw = fields.reduce((acc, [key]) => {
       const input = form.querySelector(`[name="raw.${key}"]`);
       acc[key] = number(input && input.value);
       return acc;
     }, {});
+    if (category === 'pitching') {
+      raw.pitchingBattedBallProfile = collectPitchingBattedBallProfile(form);
+    }
+    return raw;
   }
 
   function battingDerived(raw) {
@@ -537,14 +635,24 @@
   }
 
   function pitchingDerived(raw) {
+    const normalizedRaw = AppStats.applyPitchingBattedBallBreakdown(raw);
     const innings = number(raw.outsRecorded) / 3;
+    const breakdown = AppStats.summarizePitchingBattedBallProfile(
+      normalizedRaw.pitchingBattedBallProfile,
+      normalizedRaw.groundOuts,
+      normalizedRaw.flyOuts,
+    );
     return {
       era: innings ? (number(raw.earnedRuns) * 9) / innings : 0,
       whip: innings ? (number(raw.hitsAllowed) + number(raw.walks)) / innings : 0,
       hitAverage: number(raw.battersFaced) ? number(raw.hitsAllowed) / number(raw.battersFaced) : 0,
       vsLeftHitAverage: number(raw.vsLeftBatters) ? number(raw.vsLeftHits) / number(raw.vsLeftBatters) : 0,
       vsRightHitAverage: number(raw.vsRightBatters) ? number(raw.vsRightHits) / number(raw.vsRightBatters) : 0,
-      groundFlyRatio: number(raw.flyOuts) ? number(raw.groundOuts) / number(raw.flyOuts) : number(raw.groundOuts),
+      groundFlyRatio: number(normalizedRaw.flyOuts) ? number(normalizedRaw.groundOuts) / number(normalizedRaw.flyOuts) : number(normalizedRaw.groundOuts),
+      pitchingBattedBallBreakdown: {
+        rows: breakdown.rows,
+        totals: breakdown.totals,
+      },
     };
   }
 
@@ -574,11 +682,13 @@
       { label: 'WHIP', value: fmt3(d.whip) },
       { label: 'ゴロ/フライ', value: fmt3(d.groundFlyRatio) },
     ]);
+    target.insertAdjacentHTML('beforeend', `<div class="ground-fly-detail manual-inline-detail">${buildGroundFlyDetailTable({ pitching: { derived: { pitchingBattedBallBreakdown: d.pitchingBattedBallBreakdown } } })}</div>`);
   }
 
   function toggleCategoryFields(category) {
     qs('manualBattingFields')?.classList.toggle('hidden', category !== 'batting');
     qs('manualPitchingFields')?.classList.toggle('hidden', category !== 'pitching');
+    qs('manualPitchingBattedBallFields')?.classList.toggle('hidden', category !== 'pitching');
   }
 
   function bindManualForm() {
@@ -595,12 +705,12 @@
       if (['manualCategory', 'manualGameId', 'manualPlayerId'].includes(event.target.id)) {
         reload();
       }
-      if (String(event.target.name || '').startsWith('raw.')) {
+      if (String(event.target.name || '').startsWith('raw.') || String(event.target.name || '').startsWith('battedBall.')) {
         renderManualDerivedPreview(form);
       }
     });
     form.addEventListener('input', (event) => {
-      if (String(event.target.name || '').startsWith('raw.')) {
+      if (String(event.target.name || '').startsWith('raw.') || String(event.target.name || '').startsWith('battedBall.')) {
         renderManualDerivedPreview(form);
       }
     });
@@ -702,6 +812,26 @@
     });
   }
 
+  function bindGroundFlyToggles(root = document) {
+    root.querySelectorAll('[data-ground-fly-toggle]').forEach((toggle) => {
+      const key = toggle.dataset.groundFlyToggle;
+      const panel = root.querySelector(`#groundFlyDetailPanel-${key}`);
+      if (!panel) return;
+      const handleToggle = () => {
+        const isHidden = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', !isHidden);
+        toggle.setAttribute('aria-expanded', String(isHidden));
+      };
+      toggle.addEventListener('click', handleToggle);
+      toggle.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleToggle();
+        }
+      });
+    });
+  }
+
   function buildCandidateEditor(candidate, uploadId, gameId) {
     const fields = candidate.category === 'pitching' ? pitchingFields : battingFields;
     return `
@@ -716,6 +846,7 @@
             </div>
           `).join('')}
         </div>
+        ${candidate.category === 'pitching' ? buildPitchingBattedBallEditorFields(`scorebook-${uploadId}-${candidate.playerId}`, candidate.raw.pitchingBattedBallProfile) : ''}
         <button class="button-primary" type="submit">この候補を保存</button>
       </form>
     `;
@@ -745,6 +876,9 @@
           acc[key] = number(form.querySelector(`[name="raw.${key}"]`)?.value);
           return acc;
         }, {});
+        if (category === 'pitching') {
+          raw.pitchingBattedBallProfile = collectPitchingBattedBallProfile(form);
+        }
         const payload = {
           gameId: number(form.dataset.gameId),
           playerId: number(form.dataset.playerId),
@@ -840,6 +974,7 @@
     sections.push(buildRankingCard(rankings));
     root.innerHTML = sections.join('');
     bindBig3Tabs();
+    bindGroundFlyToggles(root);
     bindManualForm();
     bindScorebookForm();
     if (state.scorebookUpload) renderScorebookPreview(state.scorebookUpload);
@@ -884,6 +1019,7 @@
       blocks.push(buildRankingCard(state.dashboard.rankings));
     }
     root.innerHTML = blocks.join('');
+    bindGroundFlyToggles(root);
     bindManualForm();
     bindScorebookForm();
     if (state.scorebookUpload) renderScorebookPreview(state.scorebookUpload);

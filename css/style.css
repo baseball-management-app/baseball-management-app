@@ -79,6 +79,18 @@ h2 { margin: 0 0 8px; font-size: 1rem; }
   padding: 10px;
 }
 
+.stat-card-button {
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card-button:hover,
+.stat-card-button:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(22, 75, 134, 0.12);
+  outline: none;
+}
+
 .stat-label,
 label,
 .small,
@@ -178,6 +190,34 @@ button,
 .result-win { color: var(--ok); font-weight: 700; }
 .result-loss { color: var(--danger); font-weight: 700; }
 .hidden { display: none !important; }
+.subtle-details {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+}
+.subtle-details summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 700;
+}
+.ground-fly-detail {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.manual-inline-detail {
+  border-top: 0;
+  padding-top: 0;
+}
+.compact-table th,
+.compact-table td {
+  white-space: nowrap;
+}
+.batted-ball-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
 
 .login-wrap {
   max-width: 420px;

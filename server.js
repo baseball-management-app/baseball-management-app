@@ -31,6 +31,7 @@ const isRailway = Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY
 const useSecureCookie = process.env.NODE_ENV === 'production' || isRailway;
 
 const AppRoles = require('./js/roles');
+const AppStats = require('./js/stats');
 const ALLOWED_ROLES = new Set(AppRoles.ALLOWED_ROLES);
 const ROLE_LABELS = AppRoles.ROLE_LABELS;
 const PLAYER_META_DEFAULTS = {
@@ -240,34 +241,36 @@ function deriveBatting(rawInput = {}) {
 }
 
 function derivePitching(rawInput = {}) {
+  const normalizedInput = AppStats.applyPitchingBattedBallBreakdown(rawInput);
   const raw = {
-    pitchCount: parseNumber(rawInput.pitchCount),
-    outsRecorded: parseNumber(rawInput.outsRecorded),
-    maxVelocity: parseNumber(rawInput.maxVelocity),
-    averageVelocity: parseNumber(rawInput.averageVelocity),
-    breakingBallRate: parseNumber(rawInput.breakingBallRate),
-    battersFaced: parseNumber(rawInput.battersFaced),
-    hitsAllowed: parseNumber(rawInput.hitsAllowed),
-    walks: parseNumber(rawInput.walks),
-    hitByPitch: parseNumber(rawInput.hitByPitch),
-    strikeouts: parseNumber(rawInput.strikeouts),
-    earnedRuns: parseNumber(rawInput.earnedRuns),
-    homeRunsAllowed: parseNumber(rawInput.homeRunsAllowed),
-    groundOuts: parseNumber(rawInput.groundOuts),
-    flyOuts: parseNumber(rawInput.flyOuts),
-    vsLeftBatters: parseNumber(rawInput.vsLeftBatters),
-    vsLeftHits: parseNumber(rawInput.vsLeftHits),
-    vsRightBatters: parseNumber(rawInput.vsRightBatters),
-    vsRightHits: parseNumber(rawInput.vsRightHits),
-    fastballPull: parseNumber(rawInput.fastballPull),
-    fastballCenter: parseNumber(rawInput.fastballCenter),
-    fastballOpposite: parseNumber(rawInput.fastballOpposite),
-    breakingPull: parseNumber(rawInput.breakingPull),
-    breakingCenter: parseNumber(rawInput.breakingCenter),
-    breakingOpposite: parseNumber(rawInput.breakingOpposite),
-    offspeedPull: parseNumber(rawInput.offspeedPull),
-    offspeedCenter: parseNumber(rawInput.offspeedCenter),
-    offspeedOpposite: parseNumber(rawInput.offspeedOpposite),
+    pitchCount: parseNumber(normalizedInput.pitchCount),
+    outsRecorded: parseNumber(normalizedInput.outsRecorded),
+    maxVelocity: parseNumber(normalizedInput.maxVelocity),
+    averageVelocity: parseNumber(normalizedInput.averageVelocity),
+    breakingBallRate: parseNumber(normalizedInput.breakingBallRate),
+    battersFaced: parseNumber(normalizedInput.battersFaced),
+    hitsAllowed: parseNumber(normalizedInput.hitsAllowed),
+    walks: parseNumber(normalizedInput.walks),
+    hitByPitch: parseNumber(normalizedInput.hitByPitch),
+    strikeouts: parseNumber(normalizedInput.strikeouts),
+    earnedRuns: parseNumber(normalizedInput.earnedRuns),
+    homeRunsAllowed: parseNumber(normalizedInput.homeRunsAllowed),
+    groundOuts: parseNumber(normalizedInput.groundOuts),
+    flyOuts: parseNumber(normalizedInput.flyOuts),
+    vsLeftBatters: parseNumber(normalizedInput.vsLeftBatters),
+    vsLeftHits: parseNumber(normalizedInput.vsLeftHits),
+    vsRightBatters: parseNumber(normalizedInput.vsRightBatters),
+    vsRightHits: parseNumber(normalizedInput.vsRightHits),
+    fastballPull: parseNumber(normalizedInput.fastballPull),
+    fastballCenter: parseNumber(normalizedInput.fastballCenter),
+    fastballOpposite: parseNumber(normalizedInput.fastballOpposite),
+    breakingPull: parseNumber(normalizedInput.breakingPull),
+    breakingCenter: parseNumber(normalizedInput.breakingCenter),
+    breakingOpposite: parseNumber(normalizedInput.breakingOpposite),
+    offspeedPull: parseNumber(normalizedInput.offspeedPull),
+    offspeedCenter: parseNumber(normalizedInput.offspeedCenter),
+    offspeedOpposite: parseNumber(normalizedInput.offspeedOpposite),
+    pitchingBattedBallProfile: normalizedInput.pitchingBattedBallProfile,
   };
   const inningsPitched = outsToInnings(raw.outsRecorded);
   const walksAndHitByPitch = raw.walks + raw.hitByPitch;
@@ -277,6 +280,7 @@ function derivePitching(rawInput = {}) {
   const era = ratio(raw.earnedRuns * 9, inningsPitched);
   const whip = ratio(raw.hitsAllowed + raw.walks, inningsPitched);
   const groundFlyRatio = raw.flyOuts ? raw.groundOuts / raw.flyOuts : raw.groundOuts ? raw.groundOuts : 0;
+  const battedBallBreakdown = AppStats.summarizePitchingBattedBallProfile(raw.pitchingBattedBallProfile, raw.groundOuts, raw.flyOuts);
 
   return {
     raw,
@@ -289,6 +293,10 @@ function derivePitching(rawInput = {}) {
       walksAndHitByPitch,
       whip,
       groundFlyRatio,
+      pitchingBattedBallBreakdown: {
+        rows: battedBallBreakdown.rows,
+        totals: battedBallBreakdown.totals,
+      },
       pitchTypeBattedBallDirection: {
         fastball: { pull: raw.fastballPull, center: raw.fastballCenter, opposite: raw.fastballOpposite },
         breaking: { pull: raw.breakingPull, center: raw.breakingCenter, opposite: raw.breakingOpposite },
@@ -509,10 +517,17 @@ async function parseScorebookText(text) {
     const categoryToken = tokens.shift();
     const category = categoryToken === 'pitching' ? 'pitching' : 'batting';
     const raw = {};
+    const pitchingBattedBallProfile = AppStats.emptyPitchingBattedBallProfile();
     for (const token of tokens) {
+      if (category === 'pitching' && AppStats.extractBreakdownToken(token, pitchingBattedBallProfile)) {
+        continue;
+      }
       const [key, value] = token.split('=');
       if (!key) continue;
       raw[key] = parseNumber(value);
+    }
+    if (category === 'pitching') {
+      raw.pitchingBattedBallProfile = pitchingBattedBallProfile;
     }
     candidates.push({
       playerId: player.id,
