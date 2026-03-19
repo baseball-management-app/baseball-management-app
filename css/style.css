@@ -796,13 +796,9 @@ button,
   .diary-list-header,
   .diary-note-header,
   .condition-detail-header,
-<<<<<<< HEAD
-  .condition-detail-footer {
-=======
-  .condition-list-item,
+  .condition-detail-footer,
   .condition-weight-chart-header,
   .condition-weight-trigger-label {
->>>>>>> origin/main
     align-items: flex-start;
     flex-direction: column;
   }
