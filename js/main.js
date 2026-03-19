@@ -18,12 +18,9 @@
     conditionRecords: [],
     conditionSelectedDate: '',
     conditionCalendarMonth: new Date().toISOString().slice(0, 7),
-<<<<<<< HEAD
     conditionDetailMode: 'view',
-=======
     conditionWeightChartVisible: false,
     conditionWeightChartRange: 'all',
->>>>>>> origin/main
   };
 
   const big3Fields = [
@@ -312,8 +309,13 @@
   async function refreshConditionRecords() {
     const payload = await api('/api/condition-records');
     state.conditionRecords = (payload.records || []).map((record) => normalizeConditionRecord(record));
-    if (state.conditionSelectedDate && !state.conditionRecords.some((record) => record.entryDate === state.conditionSelectedDate)) {
+    const hasSelectedRecord = state.conditionSelectedDate && state.conditionRecords.some((record) => record.entryDate === state.conditionSelectedDate);
+    if (!hasSelectedRecord) {
       state.conditionDetailMode = 'view';
+      state.conditionSelectedDate = state.conditionRecords[0]?.entryDate || state.conditionSelectedDate;
+      if (state.conditionSelectedDate) {
+        state.conditionCalendarMonth = state.conditionSelectedDate.slice(0, 7);
+      }
     }
     if (!state.conditionSelectedDate && state.conditionRecords[0]) {
       state.conditionSelectedDate = state.conditionRecords[0].entryDate;
@@ -2067,37 +2069,12 @@
               <div class="stat-value">${escapeHtml(String(record.sleepHours))}時間</div>
             </div>
           </div>
-<<<<<<< HEAD
+          ${buildConditionWeightChart(record)}
           <div class="condition-detail-footer">
             <div class="meta">更新: ${escapeHtml(String(record.updatedAt || '').replace('T', ' ').slice(0, 16) || '未更新')}</div>
             <div class="actions">
               <button class="button-secondary" type="button" id="conditionDetailEditBtn">編集する</button>
               <button class="button-danger" type="button" id="conditionDetailDeleteBtn">削除する</button>
-=======
-          ${buildConditionWeightChart(record)}
-          <div class="meta">更新: ${escapeHtml(String(record.updatedAt || '').replace('T', ' ').slice(0, 16) || '未更新')}</div>
-        ` : '<div class="small">選択した日付の体調データはまだありません。</div>'}
-      </section>
-    `;
-  }
-
-<<<<<<< HEAD
-=======
-  function buildConditionRecordList(records) {
-    return `
-      <section class="card">
-        <div class="diary-list-header">
-          <div>
-            <h2>入力履歴</h2>
-            <div class="small">保存済み ${records.length}件</div>
-          </div>
-        </div>
-        ${records.length === 0 ? '<div class="small">まだ体調データがありません。</div>' : records.map((record) => `
-          <button type="button" class="list-item condition-list-item ${state.conditionSelectedDate === record.entryDate ? 'is-selected' : ''}" data-condition-select-date="${record.entryDate}">
-            <div class="condition-list-main">
-              <strong>${escapeHtml(formatDiaryDateLabel(record.entryDate))}</strong>
-              <div class="meta">体調 ${escapeHtml(getConditionStatusLabel(record.conditionStatus, record))} / 体重 ${escapeHtml(String(record.weight))}kg / 睡眠 ${escapeHtml(String(record.sleepHours))}時間 / 疲労度 ${escapeHtml(getFatigueLevelLabel(record.fatigueLevel, record))}</div>
->>>>>>> origin/main
             </div>
           </div>
           <div id="conditionDetailMessage" class="small"></div>
@@ -2105,8 +2082,6 @@
       </section>
     `;
   }
-
->>>>>>> main
   async function renderConditionCheck(options = {}) {
     const root = qs('conditionCheckRoot');
     if (!root) return;
