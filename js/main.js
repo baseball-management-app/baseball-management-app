@@ -455,18 +455,17 @@
     return `
       <section class="card">
         <h2>個人目標</h2>
-        <p class="small">${hasGoal ? '今月の目標を必要に応じてホーム上で更新できます。' : '今月の目標を入力すると、次回ログイン後もこの画面に表示されます。'}</p>
-        <form id="personalGoalForm">
+        <p class="small">${hasGoal ? '今月の目標は入力内容を更新すると自動で反映されます。' : '今月の目標を入力すると自動で保存され、次回ログイン後もこの画面に表示されます。'}</p>
+        <div id="personalGoalForm">
           <div class="form-row">
             <label for="personalGoalInput">今月の目標</label>
             <textarea id="personalGoalInput" name="personalGoal" maxlength="300" placeholder="今月の目標を入力">${escapeHtml(personalGoal)}</textarea>
           </div>
           <div class="goal-card-footer">
             <div id="personalGoalStatus" class="small goal-status">${hasGoal ? `保存済み: ${escapeHtml(personalGoal)}` : 'まだ個人目標は未入力です。'}</div>
-            <button class="button-primary goal-save-button" type="submit">保存する</button>
+            <div id="personalGoalMessage" class="small goal-message" aria-live="polite"></div>
           </div>
-          <div id="personalGoalMessage" class="small"></div>
-        </form>
+        </div>
       </section>
     `;
   }
@@ -476,30 +475,88 @@
     if (!form) return;
     const message = qs('personalGoalMessage');
     const input = qs('personalGoalInput');
+    const status = qs('personalGoalStatus');
+    if (!message || !input || !status) return;
 
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      message.className = 'small';
-      message.textContent = '保存中です...';
+    let lastSavedGoal = String(input.value || '').trim();
+    let saveTimer = null;
+    let isSaving = false;
+    let pendingGoal = null;
+
+    function setMessage(text, tone) {
+      message.className = `small goal-message${tone ? ` ${tone}` : ''}`;
+      message.textContent = text;
+    }
+
+    function updateStatus(goal) {
+      status.textContent = goal ? `保存済み: ${goal}` : 'まだ個人目標は未入力です。';
+    }
+
+    async function saveGoal(goalValue) {
+      const normalizedGoal = String(goalValue || '').trim();
+      if (normalizedGoal === lastSavedGoal) {
+        if (!normalizedGoal) setMessage('', '');
+        return;
+      }
+      if (isSaving) {
+        pendingGoal = goalValue;
+        return;
+      }
+
+      isSaving = true;
+      setMessage('自動保存中です...', '');
       try {
         const payload = await api('/api/profile/personal-goal', {
           method: 'PUT',
-          body: JSON.stringify({ personalGoal: input.value }),
+          body: JSON.stringify({ personalGoal: goalValue }),
         });
         state.user = payload.user;
         if (state.dashboard) {
           state.dashboard.user = payload.user;
         }
         const savedGoal = String((payload.user && payload.user.profile && payload.user.profile.personalGoal) || '');
-        const status = qs('personalGoalStatus');
-        if (status) status.textContent = savedGoal ? `保存済み: ${savedGoal}` : 'まだ個人目標は未入力です。';
-        if (input) input.value = savedGoal;
-        message.className = 'small success-text';
-        message.textContent = payload.message;
+        const currentGoal = String(input.value || '').trim();
+        lastSavedGoal = savedGoal.trim();
+        updateStatus(savedGoal);
+        if (currentGoal === normalizedGoal) {
+          input.value = savedGoal;
+        }
+        setMessage(payload.message, 'success-text');
       } catch (error) {
-        message.className = 'small error-text';
-        message.textContent = error.message;
+        setMessage(error.message, 'error-text');
+      } finally {
+        isSaving = false;
+        if (pendingGoal != null) {
+          const nextGoal = pendingGoal;
+          pendingGoal = null;
+          if (String(nextGoal || '').trim() !== lastSavedGoal) {
+            saveGoal(nextGoal);
+          }
+        }
       }
+    }
+
+    function queueAutoSave() {
+      const normalizedGoal = String(input.value || '').trim();
+      if (saveTimer) clearTimeout(saveTimer);
+      if (normalizedGoal === lastSavedGoal) {
+        setMessage('', '');
+        return;
+      }
+      setMessage('入力内容を自動で保存します...', '');
+      saveTimer = window.setTimeout(() => {
+        saveTimer = null;
+        saveGoal(input.value);
+      }, 700);
+    }
+
+    input.addEventListener('input', queueAutoSave);
+    input.addEventListener('blur', () => {
+      if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+      }
+      saveGoal(input.value);
     });
   }
 
