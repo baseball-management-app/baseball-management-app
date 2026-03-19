@@ -1899,7 +1899,7 @@
               <h3>体重の推移</h3>
               <div class="small">${escapeHtml(formatDiaryDateLabel(getConditionWeightChartReferenceDate()))}までの記録</div>
             </div>
-            <div class="segmented-control" role="tablist" aria-label="体重推移の表示範囲切り替え">
+            <div class="segmented-control" aria-label="体重推移の表示範囲切り替え">
               ${rangeOptions.map((option) => `
                 <button
                   type="button"
@@ -1947,7 +1947,7 @@
             <h3>体重の推移</h3>
             <div class="small">${escapeHtml(activeDateLabel)}までの推移を表示しています。</div>
           </div>
-          <div class="segmented-control" role="tablist" aria-label="体重推移の表示範囲切り替え">
+          <div class="segmented-control" aria-label="体重推移の表示範囲切り替え">
             ${rangeOptions.map((option) => `
               <button
                 type="button"
@@ -2081,6 +2081,8 @@
     `;
   }
 
+<<<<<<< HEAD
+=======
   function buildConditionRecordList(records) {
     return `
       <section class="card">
@@ -2104,6 +2106,7 @@
     `;
   }
 
+>>>>>>> main
   async function renderConditionCheck(options = {}) {
     const root = qs('conditionCheckRoot');
     if (!root) return;
