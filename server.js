@@ -1033,7 +1033,11 @@ app.delete('/api/diary-notes/:id', requireRole(['player']), async (req, res) => 
 });
 
 app.get('/api/condition-records', requireRole(['player']), async (req, res) => {
-  const records = await listConditionRecords({ userId: req.session.user.id });
+  const records = (await listConditionRecords({ userId: req.session.user.id })).map((record) => ({
+    ...record,
+    conditionStatusLabel: CONDITION_STATUS_LABELS[record.conditionStatus] || record.conditionStatus,
+    fatigueLevelLabel: FATIGUE_LEVEL_LABELS[record.fatigueLevel] || record.fatigueLevel,
+  }));
   return res.status(200).json({ records });
 });
 
