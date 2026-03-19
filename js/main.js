@@ -172,12 +172,21 @@
     return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
   }
 
-  function getConditionStatusLabel(value) {
-    return conditionStatusOptions.find((option) => option.value === value)?.label || value || '—';
+  function getConditionStatusLabel(value, record = null) {
+    return record?.conditionStatusLabel || conditionStatusOptions.find((option) => option.value === value)?.label || value || '—';
   }
 
-  function getFatigueLevelLabel(value) {
-    return fatigueLevelOptions.find((option) => option.value === value)?.label || value || '—';
+  function getFatigueLevelLabel(value, record = null) {
+    return record?.fatigueLevelLabel || fatigueLevelOptions.find((option) => option.value === value)?.label || value || '—';
+  }
+
+  function normalizeConditionRecord(record) {
+    if (!record) return record;
+    return {
+      ...record,
+      conditionStatusLabel: getConditionStatusLabel(record.conditionStatus, record),
+      fatigueLevelLabel: getFatigueLevelLabel(record.fatigueLevel, record),
+    };
   }
 
   function getConditionRecordCountsByDate(records) {
@@ -296,7 +305,7 @@
 
   async function refreshConditionRecords() {
     const payload = await api('/api/condition-records');
-    state.conditionRecords = payload.records || [];
+    state.conditionRecords = (payload.records || []).map((record) => normalizeConditionRecord(record));
     if (!state.conditionSelectedDate && state.conditionRecords[0]) {
       state.conditionSelectedDate = state.conditionRecords[0].entryDate;
       state.conditionCalendarMonth = state.conditionSelectedDate.slice(0, 7);
@@ -314,6 +323,7 @@
     if (!nav || !user) return;
     const current = document.body.dataset.page;
     const rolePage = document.body.dataset.rolePage;
+    const isPlayerPage = rolePage === 'player' || ['player', 'diary', 'condition-check'].includes(current);
     const defaultInputHref = user.role === 'coach' ? 'coach.html' : 'condition.html';
     const defaultInputPage = user.role === 'coach' ? 'coach' : 'condition';
     const inputHref = rolePage && ['coach', 'manager', 'player'].includes(rolePage)
@@ -331,6 +341,11 @@
     if (user.role === 'player') {
       links.push({ href: 'diary.html', page: 'diary', label: '野球日誌' });
       links.push({ href: 'condition-check.html', page: 'condition-check', label: '体調' });
+    }
+
+    if (isPlayerPage && user.role !== 'player') {
+      window.location.href = 'index.html';
+      return;
     }
     links.push({ href: 'settings.html', page: 'settings', label: '設定' });
 
@@ -1840,11 +1855,11 @@
           <div class="grid">
             <div class="stat-card">
               <div class="stat-label">体調</div>
-              <div class="stat-value">${escapeHtml(getConditionStatusLabel(record.conditionStatus))}</div>
+              <div class="stat-value">${escapeHtml(getConditionStatusLabel(record.conditionStatus, record))}</div>
             </div>
             <div class="stat-card">
               <div class="stat-label">疲労度</div>
-              <div class="stat-value">${escapeHtml(getFatigueLevelLabel(record.fatigueLevel))}</div>
+              <div class="stat-value">${escapeHtml(getFatigueLevelLabel(record.fatigueLevel, record))}</div>
             </div>
             <div class="stat-card">
               <div class="stat-label">体重</div>
@@ -1874,7 +1889,7 @@
           <button type="button" class="list-item condition-list-item ${state.conditionSelectedDate === record.entryDate ? 'is-selected' : ''}" data-condition-select-date="${record.entryDate}">
             <div class="condition-list-main">
               <strong>${escapeHtml(formatDiaryDateLabel(record.entryDate))}</strong>
-              <div class="meta">体調 ${escapeHtml(getConditionStatusLabel(record.conditionStatus))} / 体重 ${escapeHtml(String(record.weight))}kg / 睡眠 ${escapeHtml(String(record.sleepHours))}時間 / 疲労度 ${escapeHtml(getFatigueLevelLabel(record.fatigueLevel))}</div>
+              <div class="meta">体調 ${escapeHtml(getConditionStatusLabel(record.conditionStatus, record))} / 体重 ${escapeHtml(String(record.weight))}kg / 睡眠 ${escapeHtml(String(record.sleepHours))}時間 / 疲労度 ${escapeHtml(getFatigueLevelLabel(record.fatigueLevel, record))}</div>
             </div>
             <span class="inline-link">詳細を見る</span>
           </button>
