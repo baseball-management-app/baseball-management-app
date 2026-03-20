@@ -782,8 +782,11 @@ button,
 .coach-condition-section-header,
 .coach-condition-list-head {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+}
+
+.coach-condition-section-header {
+  align-items: center;
   gap: 12px;
 }
 
@@ -794,8 +797,9 @@ button,
 }
 
 .coach-condition-list {
-  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   align-items: stretch;
+  gap: 8px;
 }
 
 .coach-condition-list-item,
@@ -806,10 +810,10 @@ button,
 
 .coach-condition-list-item {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-height: 0;
-  padding: 10px;
-  border-radius: 14px;
+  padding: 8px;
+  border-radius: 12px;
 }
 
 .coach-condition-list-item.is-selected,
@@ -819,26 +823,27 @@ button,
 }
 
 .coach-condition-list-head {
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
 }
 
 .coach-condition-player-name {
   display: block;
-  font-size: 0.9rem;
-  line-height: 1.3;
+  min-width: 0;
+  font-size: 0.82rem;
+  line-height: 1.25;
 }
 
 .coach-condition-entry-badge {
   flex-shrink: 0;
-  font-size: 0.68rem;
-  padding: 3px 7px;
+  font-size: 0.62rem;
+  padding: 2px 6px;
 }
 
 .coach-condition-primary-status {
-  font-size: 0.95rem;
+  font-size: 0.86rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .coach-condition-primary-status.is-empty {
@@ -848,26 +853,26 @@ button,
 .coach-condition-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
 }
 
 .coach-condition-summary-grid > div {
   display: grid;
-  gap: 2px;
-  padding: 6px 8px;
-  border-radius: 10px;
+  gap: 1px;
+  padding: 5px 6px;
+  border-radius: 9px;
   background: var(--primary-light);
 }
 
 .coach-condition-summary-grid > div span:last-child {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .meta-label {
   color: var(--subtext);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -893,7 +898,6 @@ button,
   .diary-list-header,
   .diary-note-header,
   .coach-condition-section-header,
-  .coach-condition-list-head,
   .condition-detail-header,
   .condition-detail-footer,
   .condition-weight-chart-header,
@@ -902,16 +906,23 @@ button,
     flex-direction: column;
   }
 
+  .coach-condition-list-head {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+  }
+
   .condition-weight-chart-summary {
     grid-template-columns: 1fr;
   }
 
   .coach-condition-list {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
   }
 
   .coach-condition-summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .segmented-control {
