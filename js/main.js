@@ -2535,15 +2535,23 @@
       return `
         <button type="button" class="list-item coach-condition-list-item ${isSelected ? 'is-selected' : ''}" data-coach-condition-player="${player.id}">
           <div class="coach-condition-list-head">
-            <strong>${escapeHtml(player.name)}</strong>
-            <span class="condition-status-badge ${record ? '' : 'muted'}">${record ? '入力あり' : '未入力'}</span>
+            <strong class="coach-condition-player-name">${escapeHtml(player.name)}</strong>
+            <span class="condition-status-badge coach-condition-entry-badge ${record ? '' : 'muted'}">${record ? '入力あり' : '未入力'}</span>
           </div>
+          <div class="coach-condition-primary-status ${record ? '' : 'is-empty'}">${escapeHtml(record ? getConditionStatusLabel(record.conditionStatus, record) : '未入力')}</div>
           <div class="coach-condition-summary-grid">
-            <div><span class="meta-label">体調</span><span>${escapeHtml(record ? getConditionStatusLabel(record.conditionStatus, record) : '未入力')}</span></div>
-            <div><span class="meta-label">体重</span><span>${escapeHtml(record ? fmtKg(record.weight) : '—')}</span></div>
-            <div><span class="meta-label">睡眠時間</span><span>${escapeHtml(record ? `${record.sleepHours}時間` : '—')}</span></div>
-            <div><span class="meta-label">疲労度</span><span>${escapeHtml(record ? getFatigueLevelLabel(record.fatigueLevel, record) : '—')}</span></div>
-            <div><span class="meta-label">入力日</span><span>${escapeHtml(record ? formatDiaryDateLabel(record.entryDate) : '未入力')}</span></div>
+            <div>
+              <span class="meta-label">体重</span>
+              <span>${escapeHtml(record ? fmtKg(record.weight) : '—')}</span>
+            </div>
+            <div>
+              <span class="meta-label">疲労</span>
+              <span>${escapeHtml(record ? getFatigueLevelLabel(record.fatigueLevel, record) : '—')}</span>
+            </div>
+            <div>
+              <span class="meta-label">睡眠</span>
+              <span>${escapeHtml(record ? `${record.sleepHours}h` : '—')}</span>
+            </div>
           </div>
         </button>
       `;
@@ -2660,40 +2668,10 @@
         <h2>チーム体調一覧</h2>
         <p class="small">日付ごとの体調状況を一覧で確認し、選手詳細から履歴や体重推移まで追えます。</p>
       </section>
-      <section class="card">
-        <div class="coach-condition-filter-row">
-          <div class="form-row coach-condition-date-field">
-            <label for="coachConditionDateInput">表示日</label>
-            <input id="coachConditionDateInput" type="date" value="${escapeHtml(selectedDate)}" />
-          </div>
-          <div class="actions coach-condition-filter-actions">
-            <button type="button" class="button-secondary" id="coachConditionTodayBtn">今日を表示</button>
-          </div>
-        </div>
-        <div class="small">選択日の一覧では、その日に入力された各選手の最新記録を表示します。</div>
-      </section>
       ${buildCoachConditionList(selectedDate)}
       ${buildCoachConditionDetail()}
       ${buildCoachConditionCalendar()}
     `;
-
-    qs('coachConditionDateInput')?.addEventListener('change', (event) => {
-      state.coachConditionSelectedDate = event.target.value || new Date().toISOString().slice(0, 10);
-      state.coachConditionCalendarMonth = state.coachConditionSelectedDate.slice(0, 7);
-      state.coachConditionWeightChartVisible = false;
-      const datedRecords = getCoachConditionRecordsForDate(state.coachConditionSelectedDate);
-      if (datedRecords.length && !datedRecords.some((record) => Number(record.userId) === Number(state.coachConditionSelectedPlayerId))) {
-        state.coachConditionSelectedPlayerId = Number(datedRecords[0].userId);
-      }
-      renderCoachCondition({ reload: false });
-    });
-
-    qs('coachConditionTodayBtn')?.addEventListener('click', () => {
-      state.coachConditionSelectedDate = new Date().toISOString().slice(0, 10);
-      state.coachConditionCalendarMonth = state.coachConditionSelectedDate.slice(0, 7);
-      state.coachConditionWeightChartVisible = false;
-      renderCoachCondition({ reload: false });
-    });
 
     root.querySelectorAll('[data-coach-condition-player]').forEach((button) => {
       button.addEventListener('click', () => {
