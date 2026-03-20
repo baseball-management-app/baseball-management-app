@@ -935,6 +935,11 @@ button,
   margin-bottom: 0;
 }
 
+.coach-diary-list-card,
+.coach-diary-detail-card {
+  min-width: 0;
+}
+
 .coach-diary-toolbar-head {
   margin-bottom: 14px;
 }

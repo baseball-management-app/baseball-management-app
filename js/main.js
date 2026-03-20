@@ -1911,6 +1911,16 @@
 
   function getCoachDiaryPlayers() {
     const playerMap = new Map();
+
+    state.players.forEach((player) => {
+      if (!player || !player.id) return;
+      playerMap.set(Number(player.id), {
+        id: Number(player.id),
+        name: player.name || `選手#${player.id}`,
+        position: player.position || 'ポジション未設定',
+      });
+    });
+
     [...state.coachDiaryNotes]
       .sort((left, right) => {
         const leftKey = `${left.entryDate || ''}-${left.updatedAt || ''}-${String(left.id || '').padStart(8, '0')}`;
@@ -1918,14 +1928,17 @@
         return rightKey.localeCompare(leftKey);
       })
       .forEach((note) => {
-        if (playerMap.has(Number(note.playerId))) return;
-        playerMap.set(Number(note.playerId), {
-          id: Number(note.playerId),
-          name: note.playerName || `選手#${note.playerId}`,
-          position: (note.playerProfile && note.playerProfile.position) || 'ポジション未設定',
+        const playerId = Number(note.playerId);
+        const existing = playerMap.get(playerId) || {};
+        playerMap.set(playerId, {
+          id: playerId,
+          name: existing.name || note.playerName || `選手#${note.playerId}`,
+          position: existing.position || (note.playerProfile && note.playerProfile.position) || 'ポジション未設定',
         });
       });
-    return [...playerMap.values()];
+
+    return [...playerMap.values()]
+      .sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'ja'));
   }
 
   function getCoachDiaryNotesByPlayer(playerId) {
@@ -2079,7 +2092,7 @@
           </div>
           <div class="small">選択すると右側の一覧と詳細を更新します。</div>
         </div>
-        ${players.length ? `<div class="coach-condition-list coach-diary-player-grid">${playerCards}</div>` : '<div class="small">日誌を投稿している選手はまだいません。</div>'}
+        ${players.length ? `<div class="coach-condition-list coach-diary-player-grid">${playerCards}</div>` : '<div class="small">選手が登録されていません。</div>'}
       </section>
     `;
   }
@@ -2097,7 +2110,7 @@
           <div class="coach-condition-section-header">
             <div>
               <h2>${escapeHtml(selectedPlayer ? `${selectedPlayer.name} の日誌一覧` : '日誌一覧')}</h2>
-              <div class="small">新しい投稿順で、日付・選手名・本文冒頭・タグ・返信数をまとめて確認できます。</div>
+              <div class="small">新しい投稿順で、左に選手名＋ポジション、右に日付、下に本文冒頭と反応数をまとめて確認できます。</div>
             </div>
             <div class="small">${notes.length}件</div>
           </div>
