@@ -1366,3 +1366,118 @@ button,
     text-align: left;
   }
 }
+
+.manager-checklist-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.manager-checklist-head {
+  align-items: flex-start;
+}
+
+.manager-checklist-summary {
+  min-width: 88px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--primary-light);
+  color: var(--primary);
+  text-align: center;
+}
+
+.manager-checklist-summary strong {
+  display: block;
+  font-size: 1.1rem;
+}
+
+.manager-checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.manager-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.manager-checklist-item:hover,
+.manager-checklist-item:focus-within {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.manager-checklist-item input {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.manager-checklist-item-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.manager-checklist-item-label {
+  font-weight: 700;
+}
+
+.manager-checklist-item-meta {
+  font-size: 0.8rem;
+  color: var(--subtext);
+}
+
+.manager-checklist-item.is-checked {
+  background: #eef2f6;
+  border-color: #cbd5e1;
+  opacity: 0.82;
+}
+
+.manager-checklist-item.is-checked .manager-checklist-item-label,
+.manager-checklist-item.is-checked .manager-checklist-item-meta {
+  color: #6b7280;
+}
+
+.manager-checklist-add-form {
+  margin-top: 16px;
+}
+
+.manager-checklist-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .manager-checklist-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-checklist-head,
+  .manager-checklist-add-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manager-checklist-head {
+    display: grid;
+    gap: 12px;
+  }
+
+  .manager-checklist-summary {
+    width: 100%;
+  }
+}

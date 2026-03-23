@@ -44,6 +44,7 @@
     managerDailyLogSelectedPlayerId: null,
     managerDailyLogSelectedDate: new Date().toISOString().slice(0, 10),
     managerDailyLogCalendarMonth: new Date().toISOString().slice(0, 7),
+    managerChecklistItems: [],
     playerSummaryDetail: null,
   };
 
@@ -128,6 +129,175 @@
   ];
   const defaultCoachDiaryStampOptions = ['いいね', 'ナイス', 'おつかれ', 'ファイト', 'すごい'];
   const playerGradeOptions = ['', '1年', '2年', '3年'];
+
+  const managerChecklistStorageKey = 'baseball-manager-checklist-v1';
+  const defaultManagerChecklistItems = [
+    'ボール',
+    'バット',
+    'ヘルメット',
+    'キャッチャー防具',
+    'グローブ',
+    'スパイク',
+    'ユニフォーム',
+    '帽子',
+    '水分',
+    '救急セット',
+  ];
+
+  function createManagerChecklistItems(sourceItems = defaultManagerChecklistItems) {
+    return sourceItems.map((label, index) => ({
+      id: `default-${index}-${String(label).trim()}`,
+      label: String(label).trim(),
+      checked: false,
+      custom: false,
+    }));
+  }
+
+  function normalizeManagerChecklistItems(items) {
+    const normalized = Array.isArray(items)
+      ? items
+          .map((item, index) => {
+            if (typeof item === 'string') {
+              const label = item.trim();
+              if (!label) return null;
+              return {
+                id: `legacy-${index}-${label}`,
+                label,
+                checked: false,
+                custom: false,
+              };
+            }
+            if (!item || typeof item !== 'object') return null;
+            const label = String(item.label || '').trim();
+            if (!label) return null;
+            const id = String(item.id || `${item.custom ? 'custom' : 'item'}-${index}-${label}`).trim();
+            return {
+              id,
+              label,
+              checked: Boolean(item.checked),
+              custom: Boolean(item.custom),
+            };
+          })
+          .filter(Boolean)
+      : [];
+    return normalized.length ? normalized : createManagerChecklistItems();
+  }
+
+  function loadManagerChecklistItems() {
+    try {
+      const saved = window.localStorage.getItem(managerChecklistStorageKey);
+      if (!saved) return createManagerChecklistItems();
+      return normalizeManagerChecklistItems(JSON.parse(saved));
+    } catch (error) {
+      return createManagerChecklistItems();
+    }
+  }
+
+  function saveManagerChecklistItems() {
+    window.localStorage.setItem(managerChecklistStorageKey, JSON.stringify(state.managerChecklistItems));
+  }
+
+  function ensureManagerChecklistState() {
+    if (!state.managerChecklistItems.length) {
+      state.managerChecklistItems = loadManagerChecklistItems();
+    }
+  }
+
+  function buildManagerChecklistPanel() {
+    ensureManagerChecklistState();
+    const checkedCount = state.managerChecklistItems.filter((item) => item.checked).length;
+    const itemsMarkup = state.managerChecklistItems.map((item) => `
+      <label class="manager-checklist-item ${item.checked ? 'is-checked' : ''}" for="managerChecklist-${escapeHtml(item.id)}">
+        <input
+          id="managerChecklist-${escapeHtml(item.id)}"
+          type="checkbox"
+          data-manager-checklist-item="${escapeHtml(item.id)}"
+          ${item.checked ? 'checked' : ''}
+        />
+        <span class="manager-checklist-item-copy">
+          <span class="manager-checklist-item-label">${escapeHtml(item.label)}</span>
+          <span class="manager-checklist-item-meta">${item.checked ? 'チェック済み' : '未チェック'}</span>
+        </span>
+      </label>
+    `).join('');
+
+    return `
+      <section class="card manager-checklist-card">
+        <div class="card-head-actions manager-checklist-head">
+          <div>
+            <h2>試合道具チェックリスト</h2>
+            <p class="small">持ち物の準備状況をタップで確認できます。チェック状態はこの端末に保存されます。</p>
+          </div>
+          <div class="manager-checklist-summary">
+            <strong>${checkedCount}/${state.managerChecklistItems.length}</strong>
+            <span class="small">チェック済み</span>
+          </div>
+        </div>
+        <div class="manager-checklist-grid">
+          ${itemsMarkup}
+        </div>
+        <form id="managerChecklistAddForm" class="manager-checklist-add-form">
+          <label for="managerChecklistNewItem">項目を追加</label>
+          <div class="manager-checklist-add-row">
+            <input id="managerChecklistNewItem" name="itemName" type="text" maxlength="40" placeholder="例: タオル" />
+            <button type="submit" class="button button-primary">追加</button>
+          </div>
+          <p class="small">必要に応じて道具を追加できます。</p>
+        </form>
+        <div class="actions single-action compact-top">
+          <button type="button" id="managerChecklistResetButton" class="button button-secondary">リセット</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function bindManagerChecklist() {
+    const root = qs('managerChecklistRoot');
+    if (!root) return;
+
+    root.querySelectorAll('[data-manager-checklist-item]').forEach((input) => {
+      input.addEventListener('change', () => {
+        const itemId = input.dataset.managerChecklistItem;
+        state.managerChecklistItems = state.managerChecklistItems.map((item) => (
+          item.id === itemId
+            ? { ...item, checked: input.checked }
+            : item
+        ));
+        saveManagerChecklistItems();
+        renderRoleWorkspace();
+      });
+    });
+
+    qs('managerChecklistAddForm')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const input = form.querySelector('#managerChecklistNewItem');
+      const label = String(input.value || '').trim();
+      if (!label) return;
+      const exists = state.managerChecklistItems.some((item) => item.label === label);
+      if (exists) {
+        window.alert('同じ項目がすでにあります。');
+        return;
+      }
+      state.managerChecklistItems = [
+        ...state.managerChecklistItems,
+        {
+          id: `custom-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          label,
+          checked: false,
+          custom: true,
+        },
+      ];
+      saveManagerChecklistItems();
+      renderRoleWorkspace();
+    });
+
+    qs('managerChecklistResetButton')?.addEventListener('click', () => {
+      state.managerChecklistItems = state.managerChecklistItems.map((item) => ({ ...item, checked: false }));
+      saveManagerChecklistItems();
+      renderRoleWorkspace();
+    });
+  }
 
   function getGameTypeLabel(gameType) {
     return gameTypeLabels[gameType] || '未設定';
@@ -1809,6 +1979,7 @@
         </section>
       `);
       blocks.push(buildPlayerSummaryTable(state.dashboard.playerSummaries));
+      blocks.push('<section id="managerChecklistRoot"></section>');
       blocks.push('<section id="managerDailyLogsRoot"></section>');
     } else if (user.role === 'player') {
       blocks.push(buildPersonalSummaryCard(state.dashboard.personalSummary, user));
@@ -1827,6 +1998,11 @@
     }
     root.innerHTML = blocks.join('');
     if (user.role === 'manager') {
+      const checklistRoot = qs('managerChecklistRoot');
+      if (checklistRoot) {
+        checklistRoot.innerHTML = buildManagerChecklistPanel();
+        bindManagerChecklist();
+      }
       await renderManagerDailyLogs();
     }
     bindGroundFlyToggles(root);
