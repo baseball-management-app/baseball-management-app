@@ -3963,6 +3963,15 @@
     qs('profileRole').textContent = getRoleLabel(user.role);
     qs('profileTeam').textContent = '野球部';
     if (qs('profileGrade')) qs('profileGrade').textContent = user.role === 'player' ? getPlayerGradeLabel(user.profile || {}) : '—';
+    const profileDisplayName = qs('profileDisplayName');
+    const profileGradeRow = qs('profileGradeRow');
+    const profileGradeInput = qs('profileGradeInput');
+    if (profileDisplayName) profileDisplayName.value = user.name || '';
+    if (profileGradeRow) profileGradeRow.hidden = user.role !== 'player';
+    if (profileGradeInput) {
+      profileGradeInput.disabled = user.role !== 'player';
+      profileGradeInput.value = user.role === 'player' ? getPlayerGrade(user.profile || {}) : '';
+    }
     qs('logoutBtn')?.addEventListener('click', async () => {
       await api('/api/logout', { method: 'POST' });
       window.location.href = 'login.html';
@@ -3985,16 +3994,43 @@
         message.textContent = error.message;
       }
     });
-    ['profileForm', 'emailForm', 'passwordForm'].forEach((id) => {
-      const form = qs(id);
-      if (form) {
-        form.addEventListener('submit', (event) => {
-          event.preventDefault();
-          const messageId = id === 'profileForm' ? 'profileMessage' : id === 'emailForm' ? 'emailMessage' : 'passwordMessage';
-          qs(messageId).className = 'small success-text';
-          qs(messageId).textContent = '現在のサンプル実装ではプレビューのみ対応しています。';
+    qs('profileForm')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const message = qs('profileMessage');
+      const formData = new FormData(event.currentTarget);
+      message.className = 'small';
+      message.textContent = '保存中です...';
+      try {
+        const payload = await api('/api/profile', {
+          method: 'PUT',
+          body: JSON.stringify({
+            displayName: formData.get('displayName'),
+            grade: user.role === 'player' ? formData.get('grade') : '',
+          }),
         });
+        state.user = payload.user;
+        qs('profileName').textContent = payload.user.name;
+        if (qs('profileGrade')) qs('profileGrade').textContent = payload.user.role === 'player' ? getPlayerGradeLabel(payload.user.profile || {}) : '—';
+        if (profileGradeInput && payload.user.role === 'player') {
+          profileGradeInput.value = getPlayerGrade(payload.user.profile || {});
+        }
+        message.className = 'small success-text';
+        message.textContent = payload.message;
+      } catch (error) {
+        message.className = 'small error-text';
+        message.textContent = error.message;
       }
+    });
+
+    ['emailForm', 'passwordForm'].forEach((id) => {
+      const form = qs(id);
+      if (!form) return;
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const messageId = id === 'emailForm' ? 'emailMessage' : 'passwordMessage';
+        qs(messageId).className = 'small success-text';
+        qs(messageId).textContent = '現在のサンプル実装ではプレビューのみ対応しています。';
+      });
     });
   }
 

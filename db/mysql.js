@@ -470,6 +470,16 @@ async function updateUserProfile(userId, profile) {
   return findUserById(userId);
 }
 
+async function updateUserName(userId, name) {
+  await pool.query(
+    `UPDATE users
+     SET name = ?
+     WHERE id = ?`,
+    [name, userId],
+  );
+  return findUserById(userId);
+}
+
 async function deleteUserAccount(userId) {
   await pool.query('DELETE FROM users WHERE id = ?', [userId]);
 }
@@ -893,6 +903,7 @@ module.exports = {
   pool,
   sessionStore,
   updateDiaryNote,
+  updateUserName,
   upsertDailyLog,
   upsertBig3Record,
   upsertConditionRecord,

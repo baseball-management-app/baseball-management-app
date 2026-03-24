@@ -31,6 +31,7 @@ const {
   listUsers,
   sessionStore,
   updateDiaryNote,
+  updateUserName,
   upsertDailyLog,
   upsertBig3Record,
   upsertConditionRecord,
@@ -1008,6 +1009,41 @@ app.delete('/api/account', requireLogin, async (req, res) => {
 
 app.get('/api/me', requireLogin, async (req, res) => {
   res.status(200).json({ user: sanitizeUser(await findUserById(req.session.user.id)) });
+});
+
+app.put('/api/profile', requireLogin, async (req, res) => {
+  const user = await findUserById(req.session.user.id);
+  if (!user) {
+    return res.status(404).json({ message: 'ユーザーが見つかりません。' });
+  }
+
+  const displayName = String(req.body.displayName || '').trim();
+  if (displayName.length > 80) {
+    return res.status(400).json({ message: '表示名は80文字以内で入力してください。' });
+  }
+
+  const nextProfile = {
+    ...PLAYER_META_DEFAULTS,
+    ...(user.profile || {}),
+  };
+  if (user.role === 'player') {
+    nextProfile.grade = normalizePlayerGrade(req.body.grade);
+  } else {
+    nextProfile.grade = '';
+  }
+
+  const userWithProfile = await updateUserProfile(user.id, nextProfile);
+  const finalDisplayName = displayName || userWithProfile.name;
+  const updatedUser = finalDisplayName !== userWithProfile.name
+    ? await updateUserName(user.id, finalDisplayName)
+    : userWithProfile;
+  req.session.user = sanitizeUser(updatedUser);
+  await saveSession(req);
+
+  return res.status(200).json({
+    message: 'プロフィールを更新しました。',
+    user: sanitizeUser(updatedUser),
+  });
 });
 
 app.get('/api/players', requireLogin, async (req, res) => {
