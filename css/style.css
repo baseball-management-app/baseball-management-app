@@ -1481,3 +1481,63 @@ button,
     width: 100%;
   }
 }
+
+.prepare-card {
+  background: #fff;
+}
+
+.prepare-checklist-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.prepare-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.prepare-checklist-checkbox {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.prepare-checklist-name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.prepare-checklist-item.is-checked {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.prepare-checklist-item.is-checked .prepare-checklist-name {
+  color: #6b7280;
+}
+
+.prepare-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.prepare-add-row input {
+  min-height: 48px;
+}
+
+.prepare-add-row .button {
+  min-height: 48px;
+}

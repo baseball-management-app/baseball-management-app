@@ -45,6 +45,7 @@
     managerDailyLogSelectedDate: new Date().toISOString().slice(0, 10),
     managerDailyLogCalendarMonth: new Date().toISOString().slice(0, 7),
     managerChecklistItems: [],
+    prepareChecklistItems: [],
     playerSummaryDetail: null,
   };
 
@@ -131,6 +132,21 @@
   const playerGradeOptions = ['', '1年', '2年', '3年', 'その他'];
 
   const managerChecklistStorageKey = 'baseball-manager-checklist-v1';
+  const prepareChecklistStorageKey = 'checklist';
+  const defaultPrepareChecklistItems = [
+    '試合球',
+    'ノック・キャッチボール球',
+    'ヘルメット',
+    'キャッチャー防具',
+    'バット',
+    'ノックバッド',
+    'コールドスプレー',
+    '救急箱',
+    'ロジンバッグ',
+    'ドリンク（キーパー）',
+    'クーラーボックス',
+    'タオル、雑巾',
+  ];
   const defaultManagerChecklistItems = [
     'ボール',
     'バット',
@@ -600,6 +616,7 @@
       { href: 'index.html', page: 'home', label: 'ホーム' },
       { href: 'games.html', page: 'games', label: '試合' },
       { href: inputHref, page: inputPage, label: inputLabel },
+      { href: 'prepare.html', page: 'prepare', label: '試合準備' },
     ];
     if (user.role === 'player') {
       links.push({ href: 'diary.html', page: 'diary', label: '野球日誌' });
@@ -626,6 +643,121 @@
       }
     });
   }
+
+  function getDefaultPrepareChecklist() {
+    return defaultPrepareChecklistItems.map((name) => ({ name, checked: false }));
+  }
+
+  function normalizePrepareChecklist(items) {
+    if (!Array.isArray(items)) return getDefaultPrepareChecklist();
+    const normalized = items
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const name = String(item.name || '').trim();
+        if (!name) return null;
+        return { name, checked: Boolean(item.checked) };
+      })
+      .filter(Boolean);
+    return normalized.length ? normalized : getDefaultPrepareChecklist();
+  }
+
+  function savePrepareChecklist() {
+    window.localStorage.setItem(prepareChecklistStorageKey, JSON.stringify(state.prepareChecklistItems));
+  }
+
+  function loadChecklist() {
+    try {
+      const raw = window.localStorage.getItem(prepareChecklistStorageKey);
+      state.prepareChecklistItems = raw ? normalizePrepareChecklist(JSON.parse(raw)) : getDefaultPrepareChecklist();
+    } catch (error) {
+      state.prepareChecklistItems = getDefaultPrepareChecklist();
+    }
+
+    const root = qs('prepareChecklistRoot');
+    if (!root) return;
+
+    root.innerHTML = state.prepareChecklistItems.map((item, index) => `
+      <label class="prepare-checklist-item ${item.checked ? 'is-checked' : ''}">
+        <input
+          type="checkbox"
+          class="prepare-checklist-checkbox"
+          ${item.checked ? 'checked' : ''}
+          onchange="window.toggleCheck(${index})"
+        />
+        <span class="prepare-checklist-name">${escapeHtml(item.name)}</span>
+      </label>
+    `).join('');
+  }
+
+  function toggleCheck(index) {
+    const targetIndex = Number(index);
+    if (!Number.isInteger(targetIndex) || !state.prepareChecklistItems[targetIndex]) return;
+    state.prepareChecklistItems = state.prepareChecklistItems.map((item, itemIndex) => (
+      itemIndex === targetIndex ? { ...item, checked: !item.checked } : item
+    ));
+    savePrepareChecklist();
+    loadChecklist();
+  }
+
+  function resetChecklist() {
+    state.prepareChecklistItems = state.prepareChecklistItems.map((item) => ({ ...item, checked: false }));
+    savePrepareChecklist();
+    loadChecklist();
+  }
+
+  function addItem() {
+    const input = qs('prepareItemInput');
+    if (!input) return;
+    const name = String(input.value || '').trim();
+    if (!name) return;
+    const exists = state.prepareChecklistItems.some((item) => item.name === name);
+    if (exists) {
+      window.alert('同じ項目がすでにあります。');
+      return;
+    }
+    state.prepareChecklistItems = [...state.prepareChecklistItems, { name, checked: false }];
+    input.value = '';
+    savePrepareChecklist();
+    loadChecklist();
+  }
+
+  function showPage(pageId) {
+    if (pageId === 'prepare') loadChecklist();
+  }
+
+  function renderPrepare() {
+    const root = qs('prepareRoot');
+    if (!root) return;
+
+    root.innerHTML = `
+      <section id="prepare" class="card prepare-card">
+        <h2>試合準備チェックリスト</h2>
+        <div id="prepareChecklistRoot" class="prepare-checklist-list" aria-live="polite"></div>
+        <div class="prepare-add-row">
+          <input id="prepareItemInput" type="text" maxlength="40" placeholder="項目を追加" />
+          <button type="button" class="button button-primary" id="prepareAddButton">追加</button>
+        </div>
+        <div class="actions single-action compact-top">
+          <button type="button" id="prepareResetButton" class="button button-secondary">リセット</button>
+        </div>
+      </section>
+    `;
+
+    qs('prepareAddButton')?.addEventListener('click', addItem);
+    qs('prepareItemInput')?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        addItem();
+      }
+    });
+    qs('prepareResetButton')?.addEventListener('click', resetChecklist);
+    showPage('prepare');
+  }
+
+  window.loadChecklist = loadChecklist;
+  window.toggleCheck = toggleCheck;
+  window.resetChecklist = resetChecklist;
+  window.addItem = addItem;
 
   function createStatGrid(items) {
     if (!items.length) return '<div class="small">データがありません。</div>';
@@ -4213,5 +4345,6 @@
     await renderCoachCondition();
     await renderPlayerDetail();
     await renderMeetingHistory();
+    await renderPrepare();
   });
 })();
