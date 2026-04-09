@@ -642,6 +642,9 @@
       { href: 'games.html', page: 'games', label: '試合' },
       { href: inputHref, page: inputPage, label: inputLabel },
     ];
+    if (user.role === 'player') {
+      links.push({ href: 'diary.html', page: 'diary', label: '野球日誌' });
+    }
     const conditionLink = ['coach', 'manager'].includes(user.role)
       ? { href: 'coach-condition.html', page: 'coach-condition', label: '体調' }
       : { href: 'condition-check.html', page: 'condition', label: '体調' };
