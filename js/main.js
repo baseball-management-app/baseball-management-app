@@ -2090,11 +2090,8 @@
     await refreshData();
     const { user, recentGame, teamSummary, personalSummary, rankings, playerSummaries, big3 } = state.dashboard;
     const sections = user.role === 'coach'
-      ? [buildCoachHomeEntryCard('チーム成績サマリー', 'ホームでは概要のみを表示しています。チーム全体の成績は詳細ページで確認してください。', 'coach-stats.html#team-summary', 'チーム全体の成績確認')]
+      ? [buildTeamSummaryCard(teamSummary)]
       : [buildRoleHero(user)];
-    if (user.role === 'coach') {
-      sections.push(buildRoleHero(user));
-    }
     if (user.role === 'player') {
       sections.push(buildPersonalGoalCard(user));
     }
