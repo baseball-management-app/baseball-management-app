@@ -881,6 +881,7 @@
     const canEditCondition = user.role === 'player';
     const canEditWeight = user.role === 'player' || user.role === 'manager';
     const players = getConditionPlayers();
+    // 追加
     root.innerHTML = `
       <section id="condition" class="condition-page">
         <div class="card role-hero">
@@ -2517,6 +2518,26 @@
             <div class="meta">試合種別: ${escapeHtml(getGameTypeLabel(game.gameType))}</div>
             <div class="meta">${escapeHtml(game.location || '会場未設定')} / ${game.teamScore}-${game.opponentScore}</div>
             <div class="meta">打者入力 ${game.battingPlayerCount}名 / 投手入力 ${game.pitchingPlayerCount}名 / スコアブック ${game.scorebookCount}件</div>
+            ${['coach', 'manager'].includes(user.role) ? `
+              <div class="actions">
+                <button class="button-secondary game-edit-btn" data-game-id="${game.id}" type="button">✏️ 編集</button>
+                <button class="button-secondary game-delete-btn" data-game-id="${game.id}" type="button">🗑️ 削除</button>
+              </div>
+              <form class="form hidden game-edit-form compact-top" data-game-id="${game.id}">
+                <div class="form-row"><label>試合日</label><input name="date" type="date" value="${escapeHtml(game.date || '')}" required /></div>
+                <div class="form-row"><label>対戦相手</label><input name="opponent" type="text" value="${escapeHtml(game.opponent || '')}" required /></div>
+                <div class="form-row"><label>会場</label><input name="location" type="text" value="${escapeHtml(game.location || '')}" /></div>
+                <div class="form-row"><label>試合種別</label><select name="gameType" required><option value="official" ${game.gameType === 'official' ? 'selected' : ''}>公式戦</option><option value="practice" ${game.gameType === 'practice' ? 'selected' : ''}>練習試合</option><option value="intrasquad" ${game.gameType === 'intrasquad' ? 'selected' : ''}>紅白戦</option></select></div>
+                <div class="inline-fields">
+                  <div class="form-row"><label>自チーム得点</label><input name="teamScore" type="number" min="0" value="${Number.isFinite(Number(game.teamScore)) ? Number(game.teamScore) : 0}" required /></div>
+                  <div class="form-row"><label>相手得点</label><input name="opponentScore" type="number" min="0" value="${Number.isFinite(Number(game.opponentScore)) ? Number(game.opponentScore) : 0}" required /></div>
+                </div>
+                <div class="actions">
+                  <button class="button-primary" type="submit">更新する</button>
+                </div>
+                <div class="small game-edit-message"></div>
+              </form>
+            ` : ''}
             <a class="inline-link" href="game-detail.html?gameId=${game.id}">試合詳細へ</a>
           </div>
         `).join('')}
@@ -2551,6 +2572,74 @@
         }
       });
     }
+
+    // 追加
+    root.querySelectorAll('.game-edit-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const gameId = button.dataset.gameId;
+        const editForm = root.querySelector(`.game-edit-form[data-game-id="${gameId || ''}"]`);
+        if (!editForm) return;
+        editForm.classList.toggle('hidden');
+      });
+    });
+
+    // 追加
+    root.querySelectorAll('.game-edit-form').forEach((editForm) => {
+      editForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const gameId = editForm.dataset.gameId;
+        if (!gameId) return;
+        const submitButton = editForm.querySelector('button[type="submit"]');
+        const message = editForm.querySelector('.game-edit-message');
+        const scoreInputs = editForm.querySelectorAll('input[name="teamScore"], input[name="opponentScore"]');
+        if (submitButton) submitButton.disabled = true;
+        scoreInputs.forEach((input) => { input.disabled = true; });
+        if (message) {
+          message.className = 'small game-edit-message';
+          message.textContent = '更新中です...';
+        }
+        try {
+          await api(`/api/games/${gameId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              date: editForm.date?.value || '',
+              opponent: editForm.opponent?.value || '',
+              location: editForm.location?.value || '',
+              gameType: editForm.gameType?.value || '',
+              teamScore: number(editForm.teamScore?.value),
+              opponentScore: number(editForm.opponentScore?.value),
+            }),
+          });
+          await renderGames();
+        } catch (error) {
+          if (message) {
+            message.className = 'small game-edit-message error-text';
+            message.textContent = error.message;
+          }
+          if (submitButton) submitButton.disabled = false;
+          scoreInputs.forEach((input) => { input.disabled = false; });
+        }
+      });
+    });
+
+    // 追加
+    root.querySelectorAll('.game-delete-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const gameId = button.dataset.gameId;
+        if (!gameId) return;
+        if (!window.confirm('本当に削除しますか？')) return;
+        const typed = window.prompt('「削除する」と入力した場合のみ削除されます。');
+        if (typed !== '削除する') return;
+        button.disabled = true;
+        try {
+          await api(`/api/games/${gameId}`, { method: 'DELETE' });
+          await renderGames();
+        } catch (error) {
+          button.disabled = false;
+          window.alert(error.message || '削除に失敗しました。');
+        }
+      });
+    });
   }
 
   async function renderGameDetail() {

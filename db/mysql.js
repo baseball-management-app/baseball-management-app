@@ -535,6 +535,43 @@ async function createGame({ date, opponent, location, gameType, teamScore, oppon
   return findGameById(resultInfo.insertId);
 }
 
+// 追加
+async function updateGame({ id, date, opponent, location, gameType, teamScore, opponentScore, result }) {
+  await pool.query(
+    `UPDATE games
+     SET
+      game_date = ?,
+      opponent = ?,
+      location = ?,
+      game_type = ?,
+      team_score = ?,
+      opponent_score = ?,
+      result = ?,
+      updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [date, opponent, location || null, gameType, teamScore, opponentScore, result, id],
+  );
+  return findGameById(id);
+}
+
+// 追加
+async function deleteGameWithRelations(gameId) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query('DELETE FROM stat_entries WHERE game_id = ?', [gameId]);
+    await connection.query('DELETE FROM scorebook_uploads WHERE game_id = ?', [gameId]);
+    await connection.query('DELETE FROM meetings WHERE game_id = ?', [gameId]);
+    await connection.query('DELETE FROM games WHERE id = ?', [gameId]);
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 async function listStatEntries(filters = {}) {
   const clauses = [];
   const values = [];
@@ -958,6 +995,7 @@ module.exports = {
   createScorebookUpload,
   createUser,
   createVideo,
+  deleteGameWithRelations,
   deleteConditionRecordByUserAndDate,
   deleteDiaryNote,
   deleteUserAccount,
@@ -984,6 +1022,7 @@ module.exports = {
   listUsers,
   pool,
   sessionStore,
+  updateGame,
   updateDiaryNote,
   upsertDailyLog,
   upsertBig3Record,

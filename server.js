@@ -13,6 +13,7 @@ const {
   createVideo,
   deleteConditionRecordByUserAndDate,
   deleteDiaryNote,
+  deleteGameWithRelations,
   deleteUserAccount,
   deleteVideoById,
   findBig3RecordByUserId,
@@ -34,6 +35,7 @@ const {
   listStatEntries,
   listUsers,
   sessionStore,
+  updateGame,
   updateDiaryNote,
   upsertDailyLog,
   upsertBig3Record,
@@ -1178,6 +1180,53 @@ app.get('/api/games/:id', requireLogin, async (req, res) => {
       createdByName: meeting.createdBy ? (userMap.get(meeting.createdBy)?.name || '') : '',
     })),
   });
+});
+
+// 追加
+app.put('/api/games/:id', requireRole(['coach', 'manager']), async (req, res) => {
+  const gameId = Number(req.params.id);
+  const existingGame = await findGameById(gameId);
+  if (!existingGame) {
+    return res.status(404).json({ message: '試合が見つかりません。' });
+  }
+  const date = String(req.body.date || '').trim();
+  const opponent = String(req.body.opponent || '').trim();
+  const location = String(req.body.location || '').trim();
+  const gameType = normalizeGameType(req.body.gameType);
+  const teamScore = Number(req.body.teamScore);
+  const opponentScore = Number(req.body.opponentScore);
+  if (!date || !opponent) {
+    return res.status(400).json({ message: '試合日と対戦相手は必須です。' });
+  }
+  if (!gameType) {
+    return res.status(400).json({ message: '試合種別を選択してください。' });
+  }
+  if (!Number.isInteger(teamScore) || teamScore < 0 || !Number.isInteger(opponentScore) || opponentScore < 0) {
+    return res.status(400).json({ message: 'スコアは0以上の整数で入力してください。' });
+  }
+  const result = teamScore > opponentScore ? 'win' : teamScore < opponentScore ? 'loss' : 'draw';
+  const game = await updateGame({
+    id: gameId,
+    date,
+    opponent,
+    location,
+    gameType,
+    teamScore,
+    opponentScore,
+    result,
+  });
+  return res.status(200).json({ game: buildGameSummary(game, [], []), message: '試合を更新しました。' });
+});
+
+// 追加
+app.delete('/api/games/:id', requireRole(['coach', 'manager']), async (req, res) => {
+  const gameId = Number(req.params.id);
+  const game = await findGameById(gameId);
+  if (!game) {
+    return res.status(404).json({ message: '試合が見つかりません。' });
+  }
+  await deleteGameWithRelations(gameId);
+  return res.status(200).json({ message: '試合を削除しました。' });
 });
 
 app.get('/api/meetings', requireLogin, async (_req, res) => {
